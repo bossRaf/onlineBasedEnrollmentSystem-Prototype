@@ -1,0 +1,253 @@
+administrators
+CREATE TABLE IF NOT EXISTS administrators (
+    admin_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    suffix VARCHAR(20),
+    
+    email VARCHAR(150) NOT NULL UNIQUE,
+    contact_number VARCHAR(20),
+    
+    role ENUM('Admin','Registrar') NOT NULL DEFAULT 'Registrar',
+    status ENUM('active','inactive') DEFAULT 'active',
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL
+) ENGINE=InnoDB;
+
+
+
+CREATE TABLE IF NOT EXISTS strands (
+    strand_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    strand_code VARCHAR(20) NOT NULL UNIQUE,   -- STEM, ABM, HUMSS, etc.
+    strand_name VARCHAR(150) NOT NULL,
+    
+    track ENUM('Academic','TVL','Arts and Design','Sports') NOT NULL,
+    
+    is_active TINYINT(1) DEFAULT 1,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+
+
+
+ enrollment_applications
+CREATE TABLE IF NOT EXISTS enrollment_applications (
+    application_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    suffix VARCHAR(20),
+    birthdate DATE NOT NULL,
+    gender ENUM('Male','Female','Other') NOT NULL,
+    
+    contact_number VARCHAR(20) NOT NULL,
+    email VARCHAR(150),
+    address TEXT,
+    
+    school_year VARCHAR(9) NOT NULL,
+    grade_level ENUM('Elementary','Junior High','Senior High') NOT NULL,
+    grade_number TINYINT UNSIGNED NOT NULL,
+  strand_id INT NULL,
+    previous_school VARCHAR(255),
+    
+    status ENUM('pending','under_review','approved','rejected') 
+    DEFAULT 'pending',
+    
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    reviewed_at TIMESTAMP NULL,
+    reviewed_by INT NULL,
+    remarks TEXT,
+    
+    approved_student_id INT NULL,
+    
+  INDEX (grade_level, grade_number),
+  INDEX (status),
+
+  CONSTRAINT fk_application_strand
+  FOREIGN KEY (strand_id)
+  REFERENCES strands(strand_id)
+  ON DELETE SET NULL
+  ON UPDATE CASCADE,
+    
+    FOREIGN KEY (reviewed_by)
+        REFERENCES administrators(admin_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+
+ students
+CREATE TABLE IF NOT EXISTS students (
+    internal_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL UNIQUE,
+    
+    application_id INT NOT NULL UNIQUE,
+    
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    suffix VARCHAR(20),
+    birthdate DATE NOT NULL,
+    gender ENUM('Male','Female','Other') NOT NULL,
+    
+    contact_number VARCHAR(20) NOT NULL,
+    email VARCHAR(150),
+    address TEXT,
+    
+    first_enrolled_year YEAR NOT NULL,
+    grade_level ENUM('Elementary','Junior High','Senior High') NOT NULL,
+    grade_number TINYINT UNSIGNED NOT NULL,
+    strand_id INT NULL,
+    status ENUM('active','inactive','graduated') DEFAULT 'active',
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INT NOT NULL,
+    
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    updated_by INT NULL,
+    
+    INDEX (grade_level, grade_number),
+
+    CONSTRAINT fk_student_strand
+    FOREIGN KEY (strand_id)
+    REFERENCES strands(strand_id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+    
+    FOREIGN KEY (application_id)
+        REFERENCES enrollment_applications(application_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+        
+    FOREIGN KEY (created_by)
+        REFERENCES administrators(admin_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+        
+    FOREIGN KEY (updated_by)
+        REFERENCES administrators(admin_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+CREATE TABLE enrollments (
+    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    student_internal_id INT NOT NULL,
+    application_id INT NOT NULL,
+
+    school_year VARCHAR(9) NOT NULL,
+    grade_level ENUM('Elementary','Junior High','Senior High') NOT NULL,
+    grade_number TINYINT UNSIGNED NOT NULL,
+    strand_id INT NULL,
+
+    status ENUM('enrolled','completed','dropped') DEFAULT 'enrolled',
+    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX (student_internal_id, school_year),
+
+    FOREIGN KEY (student_internal_id)
+        REFERENCES students(internal_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    FOREIGN KEY (application_id)
+        REFERENCES enrollment_applications(application_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    FOREIGN KEY (strand_id)
+        REFERENCES strands(strand_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+application_documents
+CREATE TABLE IF NOT EXISTS application_documents (
+    document_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    application_id INT NOT NULL,
+    document_type VARCHAR(100) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (application_id)
+        REFERENCES enrollment_applications(application_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+
+notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    recipient_admin_id INT NOT NULL,
+    application_id INT NULL,
+    
+    message VARCHAR(255) NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX (recipient_admin_id, is_read),
+    
+    FOREIGN KEY (recipient_admin_id)
+        REFERENCES administrators(admin_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+        
+    FOREIGN KEY (application_id)
+        REFERENCES enrollment_applications(application_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+
+
+
+year_sequences
+CREATE TABLE IF NOT EXISTS year_sequences (
+    seq_year YEAR PRIMARY KEY,
+    last_number_used INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+
+
+INSERT INTO strands (strand_code, strand_name, track) VALUES
+('STEM', 'Science, Technology, Engineering and Mathematics', 'Academic'),
+('ABM', 'Accountancy, Business and Management', 'Academic'),
+('HUMSS', 'Humanities and Social Sciences', 'Academic'),
+('GAS', 'General Academic Strand', 'Academic'),
+('ICT', 'Information and Communications Technology', 'TVL'),
+('HE', 'Home Economics', 'TVL'),
+('IA', 'Industrial Arts', 'TVL'),
+('SMAW', 'Shielded Metal Arc Welding', 'TVL'),
+('ARTS', 'Arts and Design Track', 'Arts and Design'),
+('SPORTS', 'Sports Track', 'Sports');
+
