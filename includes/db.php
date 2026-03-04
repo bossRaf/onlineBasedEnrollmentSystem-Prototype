@@ -1,9 +1,9 @@
 <?php
 function connect() {
-    $host = "sql300.infinityfree.com";
-    $dbname = "if0_41274100_enrolment_system";
-    $username = "if0_41274100";
-    $password = "8AsRjTqpdV3Nu";
+    $host = "";
+    $dbname = "";
+    $username = "";
+    $password = "";
 
     try {
         $pdo = new PDO(
