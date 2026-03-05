@@ -39,10 +39,7 @@ if (isset($_GET['approve'])) {
     exit();
 }
 
-
-
 //   FETCH ALL NOTIFICATIONS
-
 $stmt = $pdo->prepare("
     SELECT n.*, 
            ea.first_name, ea.last_name
@@ -50,8 +47,11 @@ $stmt = $pdo->prepare("
     LEFT JOIN enrollment_applications ea 
         ON n.application_id = ea.application_id
     WHERE n.recipient_admin_id = ?
+    AND (ea.status != 'approved' OR ea.status IS NULL)
     ORDER BY n.created_at DESC
 ");
+
+
 $stmt->execute([$currentAdminId]);
 $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
